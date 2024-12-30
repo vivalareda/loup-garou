@@ -1,0 +1,28 @@
+<!-- templates/index.html -->
+<!doctype html>
+<html>
+  <head>
+    <title>Werewolf Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  </head>
+  <body>
+    <input id="nameInput" placeholder="Enter name" />
+    <button onclick="joinGame()">Join Game</button>
+    <button onclick="socket.emit('start_game')">Start Game</button>
+    <div id="playerList"></div>
+
+    <script>
+      const socket = io();
+
+      function joinGame() {
+        const name = document.getElementById("nameInput").value;
+        socket.emit("join", { name: name });
+      }
+
+      socket.on("players_update", (players) => {
+        document.getElementById("playerList").innerHTML =
+          "Players: " + players.join(", ");
+      });
+    </script>
+  </body>
+</html>
