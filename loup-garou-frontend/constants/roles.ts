@@ -5,22 +5,24 @@ export interface Role {
 
 export const roles: { [key: string]: Role } = {
   werewolf: {
-    name: "Werewolf",
-    description: "Each night, vote with other werewolves to eat a villager",
+    name: "Loup-Garou",
+    description:
+      "Chaque nuit, votez avec les autres loups-garous pour dévorer un villageois",
   },
   villager: {
-    name: "Villager",
-    description: "Vote during the day to eliminate suspected werewolves",
+    name: "Villageois",
+    description:
+      "Votez pendant la journée pour éliminer les loups-garous suspects",
   },
   seer: {
-    name: "Seer",
+    name: "Voyante",
     description:
-      "Each night, check one player to reveal if they are a werewolf",
+      "Chaque nuit, inspectez un joueur pour découvrir s'il est un loup-garou",
   },
   cupidon: {
     name: "Cupidon",
     description:
-      "On the first night, choose two players to fall in love. If one dies, the other dies too.",
+      "La première nuit, choisissez deux joueurs qui tomberont amoureux. Si l'un meurt, l'autre meurt aussi.",
   },
 };
 
