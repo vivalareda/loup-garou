@@ -1,3 +1,6 @@
+from playsound import playsound
+
+
 class GameState:
 
     def __init__(self, socketio):
@@ -11,10 +14,15 @@ class GameState:
         self.cupidon_choice = None
 
     def start_game(self, players):
+        self.players = players
         self.players_alive = set(players.keys())
         self.phase = "night"
         self.round = 1
-        self.handle_night()
+        self.narrate_intro()
+        self.handle_first_night()
+
+    def narrate_intro(self):
+        playsound("./assets/Intro.mp3")
 
     def process_night_action(self, player_id, action, target_id):
         self.night_actions[player_id] = {"action": action, "target": target_id}
@@ -23,14 +31,13 @@ class GameState:
         if voter_id in self.players_alive:
             self.votes[voter_id] = target_id
 
-    def handle_night(self):
-        if self.round == 1:
-            print("Cupidon's turn, SID:", self.cupidon_sid)
-            self.socketio.emit(
-                "cupidon_choice",
-                {"message": "It's your turn, Cupidon!"},
-                to=self.cupidon_sid,
-            )
+    def handle_first_night(self):
+        # playsound("./assets/Cupidon.mp3")
+        self.socketio.emit(
+            "cupidon_choice",
+            {"message": "It's your turn, Cupidon!"},
+            to=self.cupidon_sid,
+        )
 
     def count_votes(self):
         if not self.votes:
@@ -42,3 +49,10 @@ class GameState:
 
     def setCupidonSid(self, sid):
         self.cupidon_sid = sid
+
+    def setCupidonChoice(self, sids):
+        for player in self.players.values():
+            if player.sid == sids[0]:
+                player.lover = sids[1]
+            elif player.sid == sids[1]:
+                player.lover = sids[0]

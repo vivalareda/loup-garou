@@ -42,7 +42,7 @@ def handle_add_player(data):
     players[sid] = new_player
 
     if len(players) == 1:
-        mock_names = ["Alice", "Bob", "Charlie", "David", "Eve"]
+        mock_names = ["Alice", "Bob", "Charlie", "Eve"]
         for i, name in enumerate(mock_names, start=2):
             mock_sid = str(i)
             players[mock_sid] = Player(name=name, sid=mock_sid)
@@ -50,6 +50,24 @@ def handle_add_player(data):
     print(f"Player joined: {player_name} with SID: {sid}")
     emit("player_data", {"name": new_player.name, "sid": new_player.sid}, room=sid)
     emit("players_update", [str(player) for player in players.values()], broadcast=True)
+    print("Number of players:", len(players))
+    if len(players) == 6:
+        handle_assign_roles()
+        game_state.start_game(players)
+
+
+def handle_assign_roles():
+    print("Assigning roles")
+    roles_to_assign = role_assignment(len(players))
+    print(list(zip(players, roles_to_assign)))
+    for player, role in zip(players.values(), roles_to_assign):
+        if player.name == "test":
+            player.assign_role("cupidon")
+            game_state.setCupidonSid(player.sid)
+        else:
+            player.assign_role(role)
+        print(f"The player {player.name} is a {player.role}")
+        socketio.emit("role_assigned", {"role": player.role}, to=player.sid)
 
 
 @app.route("/")
@@ -70,49 +88,15 @@ def handle_connect():
     print("Client connected")
 
 
-@socketio.on("join")
-def handle_join(data):
-    sid = request.sid
-    player_name = data["name"]
-    players[sid] = Player(name=player_name, sid=sid, role=None)
-    print(f"Player joined: {player_name} with SID: {sid}")
-    emit("players_update", [str(player) for player in players.values()], broadcast=True)
-
-
-@socketio.on("assign_roles")
-def handle_assign_roles():
-    print("Assigning roles")
-    roles_to_assign = role_assignment(len(players))
-    print(list(zip(players, roles_to_assign)))
-    for player, role in zip(players.values(), roles_to_assign):
-        if player.name == "test":
-            player.assign_role("cupidon")
-            game_state.setCupidonSid(player.sid)
-        else:
-            player.assign_role(role)
-        print(f"The player {player.name} is a {player.role}")
-        emit("role_assigned", {"role": player.role}, to=player.sid)
-
-
-@socketio.on("start_game")
-def handle_start_game():
-    print("Starting game")
-    game_state.start_game(players)
-
-
 @socketio.on("cupidon_selection")
 def handle_cupidon_selection(data):
-    data_json = json.loads(data)
-    sids = [player["sid"] for player in data_json["players"]]
-    for player in players.values():
-        if player.sid == sids[0]:
-            player.lover = sids[1]
-        elif player.sid == sids[1]:
-            player.lover = sids[0]
-
-    socketio.emit("alert_lovers", {"message": "You are in love!"}, to=sids[0])
-    socketio.emit("alert_lovers", {"message": "You are in love!"}, to=sids[1])
     print("Cupidon selected:", data)
+    sids = [player["sid"] for player in data]
+    player_names = {player.sid: player.name for player in players.values()}
+
+    game_state.setCupidonChoice(sids)
+    socketio.emit("alert_lovers", {"lover": player_names[sids[1]]}, to=sids[0])
+    socketio.emit("alert_lovers", {"lover": player_names[sids[0]]}, to=sids[1])
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ const TestSocketPage = () => {
 
   useEffect(() => {
     socket.on("test_event", (data) => {
-      console.log(data.message);
       setReceivedMessage(data.message);
     });
 

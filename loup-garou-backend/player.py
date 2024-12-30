@@ -6,7 +6,7 @@ class Player:
         self.lover = None
 
     def __repr__(self):
-        role_name = self.role["name"] if self.role else "No role assigned"
+        role_name = self.role if self.role else "No role assigned"
         return f"{self.name} - {role_name}"
 
     def assign_role(self, role):
