@@ -7,20 +7,19 @@ import { getRoleDescription } from "../../constants/roles";
 import { socket } from "@/utils/sockets.js";
 import Cupidon from "./Cupidon";
 import LoveAlert from "./LoveAlert";
+import * as Haptics from "expo-haptics";
 
 const GameInterface: React.FC = () => {
-  const router = useRouter();
   const [player, setPlayer] = useState<Player | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [showCupidon, setShowCupidon] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
   const [isInLove, setIsInLove] = useState(false);
   const [loverName, setLoverName] = useState("");
-
   const { player: playerString } = useLocalSearchParams() as { player: string };
 
   const handleCardPress = () => {
     setShowDescription(!showDescription);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   useEffect(() => {
@@ -31,9 +30,7 @@ const GameInterface: React.FC = () => {
     const handleCupidonChoice = () => {
       setShowCupidon(true);
     };
-
     socket.once("cupidon_choice", handleCupidonChoice);
-
     return () => {
       socket.off("cupidon_choice");
     };
@@ -41,15 +38,15 @@ const GameInterface: React.FC = () => {
 
   useEffect(() => {
     const handleIsInLove = (data: { lover: string }) => {
-      console.log(data.lover);
       setIsInLove(true);
-      console.log("Set player in love");
       setLoverName(data.lover);
-      console.log("Set lover name");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        .then(() => console.log("Haptic feedback triggered"))
+        .catch((error) =>
+          console.error("Error triggering haptic feedback", error),
+        );
     };
-
     socket.once("alert_lovers", handleIsInLove);
-
     return () => {
       socket.off("alert_lovers");
     };
@@ -58,10 +55,37 @@ const GameInterface: React.FC = () => {
   return (
     <SafeAreaView className="flex-1 bg-gray-900 items-center justify-center">
       <Text className="text-white text-2xl mb-5">Game Interface</Text>
-      <Text className="text-white text-lg mb-2">Player: {player?.name}</Text>
-      <Text className="text-white text-lg mb-5">Role: {player?.role}</Text>
-      <TouchableOpacity onPress={handleCardPress}>
-        <View className="w-72 h-96 bg-white rounded-lg items-center justify-center shadow-lg">
+      <Text className="text-white text-lg mb-5">Player: {player?.name}</Text>
+
+      <TouchableOpacity
+        onPress={handleCardPress}
+        className="active:scale-95 transform transition-all"
+      >
+        <View className="w-72 h-96 bg-gradient-to-br from-white to-gray-100 rounded-xl items-center justify-between p-6 shadow-xl border border-gray-200">
+          <View className="w-full flex items-center">
+            {!showDescription ? (
+              <>
+                <View className="w-16 h-16 bg-gray-900 rounded-full mb-4 items-center justify-center">
+                  <Text className="text-white text-2xl">?</Text>
+                </View>
+                <Text className="text-gray-800 text-lg font-medium text-center">
+                  Appuyez sur la carte pour révéler votre rôle
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-white text-2xl font-bold mb-4">
+                  {player?.role?.toUpperCase()}
+                </Text>
+                <View className="border-t border-gray-200 w-full pt-4">
+                  <Text className="text-gray-400 text-lg text-center leading-relaxed">
+                    {player?.role ? getRoleDescription(player.role) : ""}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+
           {loverName && (
             <LoveAlert
               visible={isInLove}
@@ -69,21 +93,13 @@ const GameInterface: React.FC = () => {
               loverName={loverName}
             />
           )}
+
           {player && (
             <Cupidon
               visible={showCupidon}
               onClose={() => setShowCupidon(false)}
               cupidonName={player.name}
             />
-          )}
-          {showDescription ? (
-            <Text className="text-black text-lg text-center p-5">
-              {player?.role ? getRoleDescription(player.role) : ""}
-            </Text>
-          ) : (
-            <Text className="text-black text-lg text-center p-5">
-              Tap to reveal role description
-            </Text>
           )}
         </View>
       </TouchableOpacity>
