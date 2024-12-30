@@ -8,6 +8,7 @@ class GameState:
         self.votes = {}
         self.night_actions = {}
         self.cupidon_sid = None
+        self.cupidon_choice = None
 
     def start_game(self, players):
         self.players_alive = set(players.keys())

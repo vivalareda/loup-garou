@@ -3,6 +3,7 @@ class Player:
         self.name = name
         self.role = role
         self.sid = sid
+        self.lover = None
 
     def __repr__(self):
         role_name = self.role["name"] if self.role else "No role assigned"

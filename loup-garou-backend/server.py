@@ -1,6 +1,7 @@
 # pyright: ignore[type]
 
 
+import json
 import random
 
 from flask import Flask, jsonify, render_template, request
@@ -97,6 +98,21 @@ def handle_assign_roles():
 def handle_start_game():
     print("Starting game")
     game_state.start_game(players)
+
+
+@socketio.on("cupidon_selection")
+def handle_cupidon_selection(data):
+    data_json = json.loads(data)
+    sids = [player["sid"] for player in data_json["players"]]
+    for player in players.values():
+        if player.sid == sids[0]:
+            player.lover = sids[1]
+        elif player.sid == sids[1]:
+            player.lover = sids[0]
+
+    socketio.emit("alert_lovers", {"message": "You are in love!"}, to=sids[0])
+    socketio.emit("alert_lovers", {"message": "You are in love!"}, to=sids[1])
+    print("Cupidon selected:", data)
 
 
 if __name__ == "__main__":
