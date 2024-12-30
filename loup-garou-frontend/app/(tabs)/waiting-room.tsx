@@ -14,7 +14,8 @@ const waitingRoom = () => {
 
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [isReady, setIsReady] = useState(false);
+  const [startGame, setStartGame] = useState(false);
+  const [updatePlayers, setUpdatePlayers] = useState(false);
 
   useEffect(() => {
     const getAllPlayers = async () => {
@@ -22,34 +23,36 @@ const waitingRoom = () => {
         const response = await axios.get("http://192.168.2.215:5001/players");
         const playerData = response.data.players;
         setPlayers(playerData);
+        setUpdatePlayers(false);
       } catch (error) {
         console.error(error);
       }
     };
 
     getAllPlayers();
+  }, [updatePlayers]);
+
+  useEffect(() => {
+    socket.on("players_update", (data) => {
+      setUpdatePlayers(true);
+    });
   }, []);
 
   const assignRole = (data: { role: string }) => {
     const newPlayer = { ...player, role: data.role };
-    console.log("The new player is: ", newPlayer);
     setPlayer(newPlayer);
     setPlayerHasRole(true);
   };
 
   useEffect(() => {
-    if (isReady) {
-      socket.emit("assign_roles");
-
-      socket.once("role_assigned", (data) => {
-        assignRole(data);
-      });
-    }
+    socket.on("role_assigned", (data) => {
+      assignRole(data);
+    });
 
     return () => {
       socket.off("assign_roles");
     };
-  }, [isReady]);
+  }, []);
 
   useEffect(() => {
     if (playerHasRole) {
@@ -74,7 +77,6 @@ const waitingRoom = () => {
           {players.map((player) => player.name).join(", ")} are waiting with you
         </Text>
       )}
-      <Button title="Start Game" onPress={() => setIsReady(true)} />
     </SafeAreaView>
   );
 };
