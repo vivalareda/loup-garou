@@ -24,7 +24,7 @@ const TestSocketPage = () => {
   const triggerServerEvent = async () => {
     try {
       const response = await axios.get(
-        "backendUrl/trigger_test_event",
+        "http://192.168.2.215:5001/trigger_test_event",
       );
       console.log(response.data.status);
     } catch (error) {

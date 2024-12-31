@@ -27,4 +27,9 @@ roles = {
         "On the first night, choose two players to fall in love. If one dies, the other dies too.",
         "Villager",
     ),
+    "hunter": Role(
+        "Hunter",
+        "If you die, you can choose to take someone down with you",
+        "Villager",
+    ),
 }

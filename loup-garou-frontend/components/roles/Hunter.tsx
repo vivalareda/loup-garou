@@ -12,54 +12,45 @@ import {
 import axios from "axios";
 import { socket } from "../../utils/sockets";
 import { Player } from "../../types";
+import { backendUrl } from "@/utils/config";
 
-const Cupidon = ({
+const Hunter = ({
   visible,
   onClose,
-  cupidonName,
+  hunterName,
 }: {
   visible: boolean;
   onClose: () => void;
-  cupidonName: string;
+  hunterName: string;
 }) => {
   const router = useRouter();
-
   const [players, setPlayers] = useState<{ name: string; sid: string }[]>([]);
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const response = await axios.get("http://192.168.2.215:5001/players");
+        const response = await axios.get(`${backendUrl}/players`);
         const allPlayers = response.data.players;
         setPlayers(
-          allPlayers.filter((player: Player) => player.name !== cupidonName),
+          allPlayers.filter((player: Player) => player.name !== hunterName),
         );
       } catch (error) {
         console.error("Error fetching players:", error);
       }
     };
-
     fetchPlayers();
   }, []);
 
   const togglePlayerSelection = (sid: string) => {
-    setSelectedPlayers((prevSelected) => {
-      if (prevSelected.includes(sid)) {
-        return prevSelected.filter((id) => id !== sid);
-      } else if (prevSelected.length < 2) {
-        return [...prevSelected, sid];
-      } else {
-        return prevSelected;
-      }
-    });
+    setSelectedPlayer(selectedPlayer === sid ? null : sid);
   };
 
-  const handleCupidonSelection = (selectedPlayers: string[]) => {
-    const chosenPlayers = players.filter((player) =>
-      selectedPlayers.includes(player.sid),
+  const handleHunterSelection = (selectedPlayer: string) => {
+    const chosenPlayer = players.find(
+      (player) => player.sid === selectedPlayer,
     );
-    socket.emit("cupidon_selection", chosenPlayers);
+    socket.emit("hunter_selection", chosenPlayer);
     onClose();
     router.push("/(tabs)/GameInterface");
   };
@@ -70,9 +61,7 @@ const Cupidon = ({
         onPress={() => togglePlayerSelection(item.sid)}
         style={{
           padding: 10,
-          backgroundColor: selectedPlayers.includes(item.sid)
-            ? "lightblue"
-            : "white",
+          backgroundColor: selectedPlayer === item.sid ? "lightblue" : "white",
           marginVertical: 5,
         }}
       >
@@ -85,7 +74,7 @@ const Cupidon = ({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView>
         <Text className="text-white justify-center text-center">
-          Choose two players:
+          Choose a player to take down with you:
         </Text>
         <FlatList
           data={players}
@@ -94,12 +83,14 @@ const Cupidon = ({
         />
         <Button
           title="Confirm Selection"
-          onPress={() => handleCupidonSelection(selectedPlayers)}
-          disabled={selectedPlayers.length !== 2}
+          onPress={() =>
+            selectedPlayer && handleHunterSelection(selectedPlayer)
+          }
+          disabled={!selectedPlayer}
         />
       </SafeAreaView>
     </Modal>
   );
 };
 
-export default Cupidon;
+export default Hunter;

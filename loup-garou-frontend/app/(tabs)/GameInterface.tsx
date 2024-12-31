@@ -5,16 +5,22 @@ import React, { useState, useEffect } from "react";
 import { Player } from "../../types";
 import { getRoleDescription } from "../../constants/roles";
 import { socket } from "@/utils/sockets.js";
-import Cupidon from "./Cupidon";
+import Cupidon from "@/components/roles/Cupidon";
+import Hunter from "@/components/roles/Hunter";
 import LoveAlert from "./LoveAlert";
 import * as Haptics from "expo-haptics";
 
 const GameInterface: React.FC = () => {
+  const router = useRouter();
+
   const [player, setPlayer] = useState<Player | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [showCupidon, setShowCupidon] = useState(false);
+  const [showHunter, setShowHunter] = useState(false);
   const [isInLove, setIsInLove] = useState(false);
   const [loverName, setLoverName] = useState("");
+  const [isHunter, setIsHunter] = useState(false);
+
   const { player: playerString } = useLocalSearchParams() as { player: string };
 
   const handleCardPress = () => {
@@ -49,6 +55,31 @@ const GameInterface: React.FC = () => {
     socket.once("alert_lovers", handleIsInLove);
     return () => {
       socket.off("alert_lovers");
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.once("hunter_choice", () => {
+      setShowHunter(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        .then(() => console.log("Haptic feedback triggered"))
+        .catch((error) =>
+          console.error("Error triggering haptic feedback", error),
+        );
+    });
+
+    return () => {
+      socket.off("hunter_choice");
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on("seer_choice", () => {
+      router.push("/(tabs)/Seer");
+    });
+
+    return () => {
+      socket.off("seer_choice");
     };
   }, []);
 
@@ -89,17 +120,28 @@ const GameInterface: React.FC = () => {
           {loverName && (
             <LoveAlert
               visible={isInLove}
-              onClose={() => setIsInLove(false)}
+              onClose={() => {
+                setIsInLove(false);
+                socket.emit("lover_alert_closed");
+                socket.emit("lover_alert_closed"); // TODO: Remove this line this is for testing purposes since we only have one player
+              }}
               loverName={loverName}
             />
           )}
 
           {player && (
-            <Cupidon
-              visible={showCupidon}
-              onClose={() => setShowCupidon(false)}
-              cupidonName={player.name}
-            />
+            <>
+              <Cupidon
+                visible={showCupidon}
+                onClose={() => setShowCupidon(false)}
+                cupidonName={player.name}
+              />
+              <Hunter
+                visible={showHunter}
+                onClose={() => setShowHunter(false)}
+                hunterName={player.name}
+              />
+            </>
           )}
         </View>
       </TouchableOpacity>
