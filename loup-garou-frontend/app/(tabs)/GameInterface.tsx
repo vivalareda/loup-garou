@@ -1,20 +1,33 @@
-import { Text, View, TouchableOpacity, Button } from "react-native";
+import { Text, View, TouchableOpacity, Button, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import { Player } from "../../types";
 import { getRoleDescription } from "../../constants/roles";
 import { socket } from "@/utils/sockets.js";
-import Cupidon from "./Cupidon";
+import Cupidon from "@/components/roles/Cupidon";
+import Hunter from "@/components/roles/Hunter";
 import LoveAlert from "./LoveAlert";
+import WitchHeal from "./WitchHeal";
+import WitchKill from "./WitchKill";
 import * as Haptics from "expo-haptics";
 
 const GameInterface: React.FC = () => {
+  const router = useRouter();
+
   const [player, setPlayer] = useState<Player | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [showCupidon, setShowCupidon] = useState(false);
+  const [showHunter, setShowHunter] = useState(false);
   const [isInLove, setIsInLove] = useState(false);
   const [loverName, setLoverName] = useState("");
+  const [showWitchHeal, setShowWitch] = useState(false);
+  const [werewolfTarget, setWerewolfTarget] = useState("");
+  const [showWitchKillModal, setShowWitchKillModal] = useState(false);
+  const [showWitchKill, setShowWitchKill] = useState(false);
+
+  const [showWerewolf, setShowWerewolf] = useState(false);
+
   const { player: playerString } = useLocalSearchParams() as { player: string };
 
   const handleCardPress = () => {
@@ -23,20 +36,18 @@ const GameInterface: React.FC = () => {
   };
 
   useEffect(() => {
-    setPlayer(JSON.parse(playerString));
+    console.log("Local search params", playerString);
+    if (playerString) {
+      const parsedPlayer: Player = JSON.parse(playerString);
+      setPlayer(parsedPlayer);
+    }
   }, []);
 
   useEffect(() => {
     const handleCupidonChoice = () => {
       setShowCupidon(true);
     };
-    socket.once("cupidon_choice", handleCupidonChoice);
-    return () => {
-      socket.off("cupidon_choice");
-    };
-  }, []);
 
-  useEffect(() => {
     const handleIsInLove = (data: { lover: string }) => {
       setIsInLove(true);
       setLoverName(data.lover);
@@ -46,11 +57,94 @@ const GameInterface: React.FC = () => {
           console.error("Error triggering haptic feedback", error),
         );
     };
+
+    const handleSeerChoice = () => {
+      router.push("/(tabs)/Seer");
+    };
+
+    const handleWitchHeel = (data: { victim: string }) => {
+      const victim = data.victim;
+      setWerewolfTarget(victim);
+    };
+
+    socket.once("cupidon_choice", handleCupidonChoice);
     socket.once("alert_lovers", handleIsInLove);
+    socket.on("witch_heal", handleWitchHeel);
+    //socket.on("seer_choice", handleSeerChoice);
+
     return () => {
-      socket.off("alert_lovers");
+      socket.off("cupidon_choice", handleCupidonChoice);
+      socket.off("alert_lovers", handleIsInLove);
+      socket.off("witch_heel", handleWitchHeel);
+      //socket.off("seer_choice", handleSeerChoice);
     };
   }, []);
+
+  useEffect(() => {
+    console.log("Werewolf target is", werewolfTarget);
+    if (werewolfTarget) {
+      console.log("Setting show werewolf to true");
+      setShowWitch(true);
+    }
+  }, [werewolfTarget]);
+
+  useEffect(() => {
+    const handleWerewolfWakeUp = () => {
+      if (player) {
+        try {
+          router.push({
+            pathname: "/(tabs)/Werewolf",
+            params: { player: JSON.stringify(player) },
+          });
+          console.log("Router push completed");
+        } catch (error) {
+          console.error("Navigation error:", error);
+        }
+      }
+    };
+
+    console.log("listening for werewolf wake up");
+    socket.on("werewolf_wake_up", handleWerewolfWakeUp);
+
+    return () => {
+      socket.off("werewolf_wake_up", handleWerewolfWakeUp);
+    };
+  }, [player]);
+
+  useEffect(() => {
+    const handleWitchKill = () => {
+      setShowWitchKillModal(true);
+    };
+
+    socket.on("witch_kill", handleWitchKill);
+
+    return () => {
+      socket.off("witch_kill", handleWitchKill);
+    };
+  }, [player]);
+
+  useEffect(() => {
+    if (player && showWitchKill) {
+      try {
+        router.push({
+          pathname: "/(tabs)/WitchKill",
+          params: { player: JSON.stringify(player) },
+        });
+      } catch (error) {
+        console.error("Navigation error:", error);
+      }
+    }
+  }, [showWitchKill]);
+
+  const handleShowWitchKillModal = (choice: string) => {
+    if (choice === "yes") {
+      setShowWitchKill(true);
+      setShowWitchKillModal(false);
+    } else {
+      setShowWitchKillModal(false);
+      socket.emit("witch_no_kill");
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900 items-center justify-center">
@@ -85,23 +179,69 @@ const GameInterface: React.FC = () => {
               </>
             )}
           </View>
+        </View>
 
-          {loverName && (
-            <LoveAlert
-              visible={isInLove}
-              onClose={() => setIsInLove(false)}
-              loverName={loverName}
-            />
-          )}
+        {loverName && (
+          <LoveAlert
+            visible={isInLove}
+            onClose={() => {
+              setIsInLove(false);
+              socket.emit("lover_alert_closed");
+              socket.emit("lover_alert_closed"); // TODO: Remove this line this is for testing purposes since we only have one player
+            }}
+            loverName={loverName}
+          />
+        )}
 
-          {player && (
+        {player && (
+          <>
             <Cupidon
               visible={showCupidon}
               onClose={() => setShowCupidon(false)}
               cupidonName={player.name}
             />
-          )}
-        </View>
+            <Hunter
+              visible={showHunter}
+              onClose={() => setShowHunter(false)}
+              hunterName={player.name}
+            />
+            <WitchHeal
+              visible={showWitchHeal}
+              onClose={() => setShowWitch(false)}
+              victim={werewolfTarget}
+            />
+          </>
+        )}
+        {showWitchKillModal && (
+          <Modal
+            visible={showWitchKillModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowWitchKillModal(false)}
+          >
+            <View className="flex-1 justify-center items-center bg-gray-50/50 bg-opacity-50">
+              <View className="bg-white p-6 rounded-lg shadow-lg w-80">
+                <Text className="text-black text-xl mb-4">
+                  Voulez-vous tuer quelqu'un?
+                </Text>
+                <View className="flex-row justify-between">
+                  <TouchableOpacity
+                    onPress={() => handleShowWitchKillModal("yes")}
+                    className="bg-red-500 p-3 rounded-lg"
+                  >
+                    <Text className="text-white">Oui</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleShowWitchKillModal("no")}
+                    className="bg-green-500 p-3 rounded-lg"
+                  >
+                    <Text className="text-white">Non</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
       </TouchableOpacity>
     </SafeAreaView>
   );

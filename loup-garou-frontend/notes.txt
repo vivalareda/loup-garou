@@ -1,0 +1,4 @@
+L'alert pour commencer le segment des loups garou ne marche pas
+j'ai implementer une fonction emit test dans le frontend directement mais ca ne trigger pas
+je ne sais pas pourquoi
+

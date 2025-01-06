@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { socket } from "@/utils/sockets.js";
 import { Player } from "../../types";
 import { useLocalSearchParams } from "expo-router";
+import { backendUrl } from "@/utils/config";
 
 const waitingRoom = () => {
   const { player: playerString } = useLocalSearchParams() as { player: string };
@@ -20,7 +21,7 @@ const waitingRoom = () => {
   useEffect(() => {
     const getAllPlayers = async () => {
       try {
-        const response = await axios.get("http://192.168.2.215:5001/players");
+        const response = await axios.get(`${backendUrl}/players`);
         const playerData = response.data.players;
         setPlayers(playerData);
         setUpdatePlayers(false);
@@ -33,7 +34,8 @@ const waitingRoom = () => {
   }, [updatePlayers]);
 
   useEffect(() => {
-    socket.on("players_update", (data) => {
+    socket.on("update_players_list", () => {
+      console.log("Updating players list");
       setUpdatePlayers(true);
     });
   }, []);

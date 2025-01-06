@@ -1,5 +1,8 @@
 {
   "expo": {
+    "extra": {
+      "ipAddr": "192.168.2.215"
+    },
     "name": "loup-garou-frontend",
     "slug": "loup-garou-frontend",
     "version": "1.0.0",
