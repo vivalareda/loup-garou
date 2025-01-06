@@ -34,7 +34,8 @@ const waitingRoom = () => {
   }, [updatePlayers]);
 
   useEffect(() => {
-    socket.on("players_update", (data) => {
+    socket.on("update_players_list", () => {
+      console.log("Updating players list");
       setUpdatePlayers(true);
     });
   }, []);

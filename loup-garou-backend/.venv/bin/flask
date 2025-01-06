@@ -1,4 +1,4 @@
-#!/Users/lilflare/github/loup-garou/loup-garou-backend/.venv/bin/python
+#!/Users/lilflare/github/loup-garou/loup-garou-backend-temp/.venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

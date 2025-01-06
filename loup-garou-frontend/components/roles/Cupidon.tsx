@@ -88,6 +88,7 @@ const Cupidon = ({
         <Text className="text-white justify-center text-center">
           Choose two players:
         </Text>
+
         <FlatList
           data={players}
           renderItem={renderPlayer}

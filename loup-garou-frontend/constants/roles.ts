@@ -19,7 +19,7 @@ export const roles: { [key: string]: Role } = {
     description:
       "Chaque nuit, inspectez un joueur pour découvrir s'il est un loup-garou",
   },
-  cupidon: {
+  cupid: {
     name: "Cupidon",
     description:
       "La première nuit, choisissez deux joueurs qui tomberont amoureux. Si l'un meurt, l'autre meurt aussi.",
