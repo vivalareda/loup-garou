@@ -26,8 +26,6 @@ const GameInterface: React.FC = () => {
   const [showWitchKillModal, setShowWitchKillModal] = useState(false);
   const [showWitchKill, setShowWitchKill] = useState(false);
 
-  const [showWerewolf, setShowWerewolf] = useState(false);
-
   const { player: playerString } = useLocalSearchParams() as { player: string };
 
   const handleCardPress = () => {
@@ -36,12 +34,20 @@ const GameInterface: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log("Local search params", playerString);
     if (playerString) {
+      console.log("Player string is", playerString);
       const parsedPlayer: Player = JSON.parse(playerString);
       setPlayer(parsedPlayer);
     }
   }, []);
+
+  useEffect(() => {
+    console.log("Werewolf target is", werewolfTarget);
+    if (werewolfTarget) {
+      console.log("Setting show werewolf to true");
+      setShowWitch(true);
+    }
+  }, [werewolfTarget]);
 
   useEffect(() => {
     const handleCupidonChoice = () => {
@@ -58,6 +64,11 @@ const GameInterface: React.FC = () => {
         );
     };
 
+    const handleDeath = () => {
+      cleanup();
+      router.push("/(tabs)/Death");
+    };
+
     const handleSeerChoice = () => {
       router.push("/(tabs)/Seer");
     };
@@ -67,28 +78,13 @@ const GameInterface: React.FC = () => {
       setWerewolfTarget(victim);
     };
 
-    socket.once("cupidon_choice", handleCupidonChoice);
-    socket.once("alert_lovers", handleIsInLove);
-    socket.on("witch_heal", handleWitchHeel);
-    //socket.on("seer_choice", handleSeerChoice);
-
-    return () => {
-      socket.off("cupidon_choice", handleCupidonChoice);
-      socket.off("alert_lovers", handleIsInLove);
-      socket.off("witch_heel", handleWitchHeel);
-      //socket.off("seer_choice", handleSeerChoice);
+    const handleDayVote = () => {
+      router.push({
+        pathname: "/(tabs)/DayVote",
+        params: { player: JSON.stringify(player) },
+      });
     };
-  }, []);
 
-  useEffect(() => {
-    console.log("Werewolf target is", werewolfTarget);
-    if (werewolfTarget) {
-      console.log("Setting show werewolf to true");
-      setShowWitch(true);
-    }
-  }, [werewolfTarget]);
-
-  useEffect(() => {
     const handleWerewolfWakeUp = () => {
       if (player) {
         try {
@@ -102,24 +98,32 @@ const GameInterface: React.FC = () => {
         }
       }
     };
-
-    console.log("listening for werewolf wake up");
-    socket.on("werewolf_wake_up", handleWerewolfWakeUp);
-
-    return () => {
-      socket.off("werewolf_wake_up", handleWerewolfWakeUp);
-    };
-  }, [player]);
-
-  useEffect(() => {
     const handleWitchKill = () => {
       setShowWitchKillModal(true);
     };
 
+    const cleanup = () => {
+      socket.off("cupidon_choice", handleCupidonChoice);
+      socket.off("alert_lovers", handleIsInLove);
+      socket.off("witch_heel", handleWitchHeel);
+      socket.off("alert_dead", handleDeath);
+      socket.off("werewolf_wake_up", handleWerewolfWakeUp);
+      socket.off("day_vote", handleDayVote);
+      socket.off("witch_kill", handleWitchKill);
+      //socket.off("seer_choice", handleSeerChoice);
+    };
+
+    socket.once("cupidon_choice", handleCupidonChoice);
+    socket.once("alert_lovers", handleIsInLove);
+    socket.on("witch_heal", handleWitchHeel);
+    socket.on("alert_dead", handleDeath);
     socket.on("witch_kill", handleWitchKill);
+    socket.on("werewolf_wake_up", handleWerewolfWakeUp);
+    socket.on("day_vote", handleDayVote);
+    //socket.on("seer_choice", handleSeerChoice);
 
     return () => {
-      socket.off("witch_kill", handleWitchKill);
+      cleanup();
     };
   }, [player]);
 

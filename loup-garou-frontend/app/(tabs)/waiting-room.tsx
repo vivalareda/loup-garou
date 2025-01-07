@@ -24,6 +24,7 @@ const waitingRoom = () => {
         const response = await axios.get(`${backendUrl}/players`);
         const playerData = response.data.players;
         setPlayers(playerData);
+        console.log(players);
         setUpdatePlayers(false);
       } catch (error) {
         console.error(error);
@@ -35,7 +36,6 @@ const waitingRoom = () => {
 
   useEffect(() => {
     socket.on("update_players_list", () => {
-      console.log("Updating players list");
       setUpdatePlayers(true);
     });
   }, []);
@@ -79,6 +79,15 @@ const waitingRoom = () => {
           {players.map((player) => player.name).join(", ")} are waiting with you
         </Text>
       )}
+      <Button
+        title="Go to screen"
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/DayVote",
+            params: { player: JSON.stringify(player) },
+          })
+        }
+      />
     </SafeAreaView>
   );
 };

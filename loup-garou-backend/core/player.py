@@ -22,4 +22,4 @@ class Player:
 
     def __repr__(self):
         role_name = self.role if self.role else "No role assigned"
-        return f"{self.name} - {role_name}"
+        return f"{self.name} is a {role_name}, current alive status: {self.is_alive}"
