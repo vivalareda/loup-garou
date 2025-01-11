@@ -1,8 +1,9 @@
 import random
+from collections import OrderedDict
 from typing import Dict, List, Optional
 
-from .player import Player
-from .roles import ROLE_DESCRIPTIONS, PlayerRole
+from core.player import Player
+from core.roles import ROLE_DESCRIPTIONS, PlayerRole
 
 
 class Game:
@@ -17,6 +18,10 @@ class Game:
         self.werewolves_alive = 0
         self.villagers_alive = 0
         self.winners = None
+        self.lovers_are_opposited_teams_and_alive = True
+        self.lover_is_hunter = False
+        self.reda_sid = None
+        self.carl_sid = None
 
     def add_player(self, name: str, sid: str) -> Player:
         player = Player(name=name, sid=sid)
@@ -30,7 +35,7 @@ class Game:
             self.add_player(name, mock_sid)
 
     def get_player(self, sid: str) -> Optional[Player]:
-        return self.players.get(sid)
+        return self.players[sid] if sid in self.players else None
 
     def get_player_by_role(self, role: PlayerRole) -> Optional[Player]:
         return next((p for p in self.players.values() if p.role == role), None)
@@ -50,18 +55,24 @@ class Game:
         ] + [PlayerRole.VILLAGER] * (num_players - 2)
 
         random.shuffle(roles_to_assign)
-        print("All players : ", self.players.values())
         for player, role in zip(self.players.values(), roles_to_assign):
             if player.name == "reda":
-                self.cupid = player.sid
+                self.reda_sid = player.sid
                 role = PlayerRole.WEREWOLF
                 self.set_veto_player(player.sid)
                 player.role = role
             elif player.name == "carl":
-                role = PlayerRole.WITCH
+                self.cupid = player.sid
+                self.carl_sid = player.sid
+                role = PlayerRole.HUNTER
                 player.role = role
             else:
                 player.role = role
+        self.set_teams_count(1)
+
+    def set_teams_count(self, numberOfWerewolves: int):
+        self.werewolves_alive = numberOfWerewolves
+        self.villagers_alive = len(self.players) - numberOfWerewolves
 
     def set_lovers(self, player1: Player, player2: Player):
         player1.lover_sid = player2.sid
@@ -83,26 +94,32 @@ class Game:
         self.veto_player = player_sid
 
     def set_player_vote(self, player_sid: str):
-        print("The player voted is : ", player_sid)
+        print("The sid of the player is ", player_sid)
         if player_sid in self.player_votes_count:
             self.player_votes_count[player_sid] += 1
         else:
             self.player_votes_count[player_sid] = 1
 
-        dict(
-            sorted(self.player_votes_count.items(), key=lambda item: item[1]),
-            reverse=True,
+        self.player_votes_count = OrderedDict(
+            sorted(
+                self.player_votes_count.items(), key=lambda item: item[1], reverse=True
+            )
         )
 
-    def annouce_death(self, player_sid: str):
+    def update_team_counts(self, player: Player):
+        if player.role == PlayerRole.WEREWOLF:
+            self.werewolves_alive -= 1
+        else:
+            self.villagers_alive -= 1
+
+    def kill_player(self, player_sid):
         player = self.get_player(player_sid)
-        if not player:
-            raise ValueError("Invalid target player")
-        if player.lover_sid:
-            lover = self.get_player(player.lover_sid)
-            if lover:
-                lover.is_alive = False
+        if player is None:
+            print("Player not found")
+            return
         player.is_alive = False
+        print(f"Player's list is now: {self.players}")
+        self.update_team_counts(player)
 
     def get_top_voted_players(self) -> List[str]:
         if not self.player_votes_count:
@@ -115,18 +132,32 @@ class Game:
         ]
         return top_players
 
+    def reset_top_voted_players(self):
+        self.player_votes_count = {}
+
     def get_werewolves_count(self):
         return len(self.get_players_by_role(PlayerRole.WEREWOLF))
 
     def reset_player_votes(self):
         self.player_votes_count = {}
 
-    def game_over(self):
-        werewolves = len(self.get_players_by_role(PlayerRole.WEREWOLF))
-        if werewolves == 0:
+    def check_game_over(self):
+        if self.lovers_are_opposited_teams_and_alive:
+            village_count = self.villagers_alive - 1
+        else:
+            village_count = self.villagers_alive
+
+        if self.werewolves_alive == 0:
             self.winners = "Villagers"
             return True
-        if werewolves >= self.villagers_alive:
+        if self.werewolves_alive >= village_count:
             self.winners = "Werewolves"
             return True
         return False
+
+    def temporary_function(self):
+        if self.reda_sid is None or self.carl_sid is None:
+            return
+        player1 = self.get_player(self.reda_sid)
+        player2 = self.get_player(self.carl_sid)
+        self.set_lovers(player1, player2)

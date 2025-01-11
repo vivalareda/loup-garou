@@ -3,8 +3,7 @@ from flask_socketio import SocketIO
 
 from core.game import Game
 from segments.segment_manager import SegmentManager
-
-from .events import GameEvents
+from server.events import GameEvents
 
 
 def create_app():
