@@ -14,6 +14,7 @@ import { socket } from "@/utils/sockets";
 import { Player } from "../../types";
 import { backendUrl } from "@/utils/config";
 import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 const DayVote = () => {
   const router = useRouter();
@@ -25,6 +26,39 @@ const DayVote = () => {
   const [updatePlayers, setUpdatePlayers] = useState(false);
   const [playerHasVoted, setPlayerHasVoted] = useState(false);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const getAllPlayers = async () => {
+        try {
+          const response = await axios.get(`${backendUrl}/players`);
+          console.log("Response", response.data.players);
+          if (isActive) {
+            const filteredPlayers = response.data.players
+              .filter((item: { is_alive: boolean }) => item.is_alive)
+              .filter((item: { sid: string }) => item.sid !== player.sid);
+            setPlayerSelection(filteredPlayers);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      };
+
+      getAllPlayers();
+
+      return () => {
+        isActive = false;
+      };
+    }, [player]),
+  );
+
+  const resetComponent = () => {
+    setUpdatePlayers(true);
+    setPlayerHasVoted(false);
+    setPlayerSelection([]);
+  };
+
   useEffect(() => {
     if (playerString) {
       setPlayer(JSON.parse(playerString));
@@ -33,30 +67,14 @@ const DayVote = () => {
     }
   }, [playerString]);
 
-  useEffect(() => {
-    const getAllPlayers = async () => {
-      try {
-        const response = await axios.get(`${backendUrl}/players`);
-        const filteredPlayers = response.data.players
-          .filter((item: { is_alive: boolean }) => item.is_alive)
-          .filter((item: { sid: string }) => item.sid !== player.sid);
-        setPlayerSelection(filteredPlayers);
-        setUpdatePlayers(false);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    getAllPlayers();
-  }, [updatePlayers]);
-
   const handleVote = (sid: string) => {
     setPlayerHasVoted(true);
+    resetComponent();
     socket.emit("vote_kill", { sid });
-    //router.push({
-    //  pathname: "/(tabs)/GameInterface",
-    //  params: { player: JSON.stringify(player) },
-    //});
+    router.push({
+      pathname: "/(tabs)/GameInterface",
+      params: { player: JSON.stringify(player) },
+    });
   };
 
   const renderPlayer = ({ item }: { item: { name: string; sid: string } }) => (

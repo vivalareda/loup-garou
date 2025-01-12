@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Button,
+} from "react-native";
 import { socket } from "@/utils/sockets";
+import { Picker } from "@react-native-picker/picker";
+import axios from "axios";
+import { backendUrl } from "@/utils/config";
 
 interface Player {
   name: string;
@@ -21,6 +31,7 @@ interface PendingAction {
 
 const MockGameManager = () => {
   const [mockPlayers, setMockPlayers] = useState<MockPlayer[]>([]);
+  const [numOfMockPlayers, setNumOfMockPlayers] = useState<number>(0);
   const [pendingActions, setPendingActions] = useState<{
     [key: string]: PendingAction;
   }>({});
@@ -28,39 +39,27 @@ const MockGameManager = () => {
     {},
   );
 
-  // Initialize mock players
-  const addMockPlayers = (count: number) => {
-    const newPlayers: MockPlayer[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const mockPlayer: MockPlayer = {
-        name: `TestPlayer${mockPlayers.length + i + 1}`,
-        sid: `mock_${Date.now()}_${i}`,
-        is_alive: true,
-        isMock: true,
-      };
-      newPlayers.push(mockPlayer);
+  // Fetch players
+  const fetchPlayers = async () => {
+    try {
+      const response = await axios.get(`${backendUrl}/players`);
+      const allPlayers = response.data.players;
+      setMockPlayers(allPlayers);
+    } catch (error) {
+      console.error("Error fetching players:", error);
     }
-
-    socket.emit("add_mock_players", {
-      players: newPlayers,
-      controllerSid: socket.id,
-    });
-
-    setMockPlayers((prev) => [...prev, ...newPlayers]);
   };
 
   useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  useEffect(() => {
     // Role assignment
-    socket.on("role_assigned", (data: { role: string }) => {
-      const player = mockPlayers.find((p) => p.sid === socket.id);
-      if (player) {
-        setMockPlayers((prev) =>
-          prev.map((p) =>
-            p.sid === socket.id ? { ...p, role: data.role } : p,
-          ),
-        );
-      }
+    socket.on("role_assigned", (data: { role: string; sid: string }) => {
+      setMockPlayers((prev) =>
+        prev.map((p) => (p.sid === data.sid ? { ...p, role: data.role } : p)),
+      );
     });
 
     // Cupidon choice
@@ -87,6 +86,12 @@ const MockGameManager = () => {
         });
       },
     );
+
+    console.log(
+      "Socket listeners count:",
+      socket.listeners("alert_lovers").length,
+    );
+    socket.on("lover_can_close", handleIsInLove);
 
     // New werewolf vote count
     socket.on(
@@ -123,6 +128,7 @@ const MockGameManager = () => {
     // Day vote
     socket.on("day_vote", () => {
       const alivePlayers = mockPlayers.filter((p) => p.is_alive);
+      console.log("Alive players:", alivePlayers);
       alivePlayers.forEach((player) => {
         setPendingActions((prev) => ({
           ...prev,
@@ -148,8 +154,45 @@ const MockGameManager = () => {
       socket.off("witch_kill");
       socket.off("day_vote");
       socket.off("alert_dead");
+      socket.off("lover_can_close", handleIsInLove);
     };
   }, [mockPlayers]);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, [pendingActions]);
+
+  const handleIsInLove = (data: { lover: string }) => {
+    console.log("Lover alert received", data);
+    socket.emit("lover_alert_closed");
+  };
+
+  const emitAlertLoversClosed = () => {
+    socket.emit("alert_lovers_closed");
+    socket.emit("alert_lovers_closed");
+  };
+
+  // Initialize mock players
+  const addMockPlayers = (count: number) => {
+    const newPlayers: MockPlayer[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const mockPlayer: MockPlayer = {
+        name: `TestPlayer${mockPlayers.length + i + 1}`,
+        sid: `mock_${Date.now()}_${i}`,
+        is_alive: true,
+        isMock: true,
+      };
+      newPlayers.push(mockPlayer);
+    }
+
+    socket.emit("add_mock_players", {
+      players: newPlayers,
+      controllerSid: socket.id,
+    });
+
+    setMockPlayers((prev) => [...prev, ...newPlayers]);
+  };
 
   const handleAction = (playerId: string, actionType: string, data: any) => {
     switch (actionType) {
@@ -229,11 +272,33 @@ const MockGameManager = () => {
       <View className="p-4">
         <View className="mb-6">
           <Text className="text-xl font-bold mb-4">Mock Game Controls</Text>
+          <TextInput
+            value={numOfMockPlayers.toString()}
+            className="border p-2 rounded w-20 mb-6"
+            onChangeText={(text) => setNumOfMockPlayers(parseInt(text))}
+          />
+          <Picker
+            className="border p-2 rounded w-20 mb-6"
+            onValueChange={(value) => setNumOfMockPlayers(parseInt(value))}
+            selectedValue={numOfMockPlayers.toString()}
+          >
+            <Picker.Item label="1" value="1" />
+            <Picker.Item label="2" value="2" />
+            <Picker.Item label="3" value="3" />
+            <Picker.Item label="4" value="4" />
+            <Picker.Item label="5" value="5" />
+            <Picker.Item label="6" value="6" />
+            <Picker.Item label="7" value="7" />
+            <Picker.Item label="8" value="8" />
+            <Picker.Item label="9" value="9" />
+            <Picker.Item label="10" value="10" />
+          </Picker>
+
           <TouchableOpacity
-            onPress={() => addMockPlayers(4)}
+            onPress={() => addMockPlayers(numOfMockPlayers)}
             className="bg-blue-500 p-4 rounded"
           >
-            <Text className="text-white text-center">Add 4 Mock Players</Text>
+            <Text className="text-white text-center">Add Mock Players</Text>
           </TouchableOpacity>
         </View>
 
@@ -243,7 +308,7 @@ const MockGameManager = () => {
           </Text>
           {mockPlayers.map((player) => (
             <View key={player.sid} className="bg-white p-4 rounded mb-2">
-              <Text>
+              <Text style={{ color: !player.is_alive ? "red" : "black" }}>
                 {player.name} - {player.role || "No role"}
                 {!player.is_alive && " (Dead)"}
               </Text>
@@ -259,6 +324,11 @@ const MockGameManager = () => {
             </View>
           ))}
         </View>
+
+        <Button
+          title="Emit alert lovers closed"
+          onPress={emitAlertLoversClosed}
+        />
       </View>
     </ScrollView>
   );
