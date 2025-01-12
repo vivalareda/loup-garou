@@ -219,7 +219,9 @@ class GameEvents:
                 Style.RESET_ALL,
             )
             self.game.kill_player(target_sid)
-            self.segments.count_votes()
+            self.segments.alert_dead_player(target_sid)
+
+            self.segments.count_vote_after_hunter()
 
         @self.socketio.on("witch_heal_victim")
         def handle_witch_heal_victim():
@@ -275,7 +277,10 @@ class GameEvents:
             if self.kill_votes_count == self.alive_players_count:
                 self.reset_counters()
                 self.segments.count_votes()
-                self.segments.check_game_over()
+                if not self.segments.running_hunter_segment:
+                    if not self.segments.check_game_over():
+                        print("Running advance segment from vote kill")
+                        self.segments.advance_segment()
 
     def reset_counters(self):
         self.kill_votes_count = 0
