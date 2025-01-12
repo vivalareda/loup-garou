@@ -153,15 +153,15 @@ class GameEvents:
         @self.socketio.on("cupidon_selection_complete")
         def handle_cupidon_selection(data):
             try:
-                # sids = [player["sid"] for player in data]
-                # player1 = self.game.get_player(sids[0])
-                # player2 = self.game.get_player(sids[1])
-                #
-                # if not player1 or not player2:
-                #     raise ValueError("Invalid player selection")
-                #
-                # self.game.set_lovers(player1, player2)
-                self.game.temporary_function()
+                sids = [player["sid"] for player in data]
+                player1 = self.game.get_player(sids[0])
+                player2 = self.game.get_player(sids[1])
+
+                if not player1 or not player2:
+                    raise ValueError("Invalid player selection")
+
+                self.game.set_lovers(player1, player2)
+                # self.game.temporary_function()
                 self.segments.advance_segment()
 
             except Exception as e:
@@ -212,14 +212,8 @@ class GameEvents:
         @self.socketio.on("hunter_selection")
         def handle_hunter_selection(data):
             target_sid = data["sid"]
-            print(
-                Fore.RED + "Hunter decided to kill : ",
-                target_sid,
-                "!!!",
-                Style.RESET_ALL,
-            )
-            self.game.kill_player(target_sid)
-            self.segments.count_votes()
+            self.segments.add_hunter_kill_to_pending(target_sid)
+            self.segments.finish_death_queue_processing()
 
         @self.socketio.on("witch_heal_victim")
         def handle_witch_heal_victim():
@@ -274,8 +268,7 @@ class GameEvents:
 
             if self.kill_votes_count == self.alive_players_count:
                 self.reset_counters()
-                self.segments.count_votes()
-                self.segments.check_game_over()
+                self.segments.alternative_count_votes()
 
     def reset_counters(self):
         self.kill_votes_count = 0

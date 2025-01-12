@@ -11,6 +11,7 @@ class Player:
     role: Optional[PlayerRole] = None
     is_alive: bool = True
     lover_sid: Optional[str] = None
+    death_cause: Optional[str] = None
 
     def to_dict(self):
         return {

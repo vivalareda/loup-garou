@@ -1,98 +1,72 @@
-from dataclasses import dataclass
-from enum import Enum
-from typing import List, Optional
+# core/death_manager.py
+from typing import List
 
-from core.death_types import DeathEffect, DeathTrigger
+from core.player import Player
 from core.roles import PlayerRole
 
 
 class DeathManager:
-    def __init__(self, game, segment_manager):
+    def __init__(self, game):
         self.game = game
-        self.pending_deaths: List[DeathEffect] = []
-        self.death_queue: List[DeathEffect] = []
-        self.segment_manager = segment_manager
+        self.pending_deaths: List[str] = []  # List of player_sids
+        self.awaiting_special_power = False
+        self.queud_deaths = []
 
-    def queue_death(self, player_sid: str, trigger: DeathTrigger):
-        """Add a death to the queue with its trigger type"""
-        death = DeathEffect(player_sid=player_sid, trigger=trigger)
-        self.death_queue.append(death)
-
-    def process_death_queue(self) -> List[str]:
-        """Process all queued deaths and return list of killed players"""
-        killed_players = []
-
-        while self.death_queue:
-            death = self.death_queue.pop(0)
-            if death.processed:
-                continue
-
-            player = self.game.get_player(death.player_sid)
-            if not player or not player.is_alive:
-                continue
-
-            self.game.kill_player(death.player_sid)
-            killed_players.append(death.player_sid)
-            death.processed = True
-
-            self._handle_special_effects(player, death.trigger)
-
-        return killed_players
-
-    def _handle_special_effects(self, player, trigger: DeathTrigger):
-        """Handle special effects when a player dies (hunter revenge, lover deaths)"""
-
-        if player.lover_sid:
-            lover = self.game.get_player(player.lover_sid)
-            if lover and lover.is_alive:
-                self.queue_death(lover.sid, DeathTrigger.LOVER_DEATH)
-
-        if player.role == PlayerRole.HUNTER and trigger != DeathTrigger.HUNTER_REVENGE:
-            self._trigger_hunter_revenge(player)
-
-    def _trigger_hunter_revenge(self, hunter) -> None:
-        """Pause death processing and trigger hunter revenge selection"""
-        self.segment_manager.running_hunter_segment = True
-        self.game.socketio.emit(
-            "hunter_selection", {"message": "Choose a player to kill"}, to=hunter.sid
-        )
-
-    def handle_witch_heal(self):
-        """
-        Handle witch healing action. Removes the most recent death and its related deaths
-        (like lover deaths) from the queue.
-        """
-        if not self.death_queue:
+    def kill_player(self, player_sid: str):
+        """Kill a player and update team counts"""
+        player = self.game.get_player(player_sid)
+        if player is None:
+            print("Player not found")
             return
 
-        for death in reversed(self.death_queue):
-            if death.trigger not in [DeathTrigger.LOVER_DEATH]:
-                victim = self.game.get_player(death.player_sid)
+        player.is_alive = False
+        print(f"Player's list is now: {self.game.players}")
+        self._update_team_counts(player)
+        self.queud_deaths.append(player)
 
-                self.death_queue.remove(death)
+    def handle_kill(self, target_sid: str) -> List[str]:
+        """
+        Handle a kill action and return list of players who died
+        """
+        killed_players = []
+        target = self.game.get_player(target_sid)
 
-                if victim and victim.lover_sid:
-                    lover_deaths = [
-                        d for d in self.death_queue if d.player_sid == victim.lover_sid
-                    ]
-                    for lover_death in lover_deaths:
-                        self.death_queue.remove(lover_death)
+        if target:
+            self.kill_player(target_sid)
+            killed_players.append(target_sid)
 
-                break
+            self._check_special_powers(target)
 
-    def handle_hunter_revenge(self, target_sid: str):
-        """Process hunter's revenge kill"""
-        self.queue_death(target_sid, DeathTrigger.HUNTER_REVENGE)
-        killed_players = self.process_death_queue()
-        self.game.segment_manager.running_hunter_segment = False
+            if target.lover_sid:
+                lover = self.game.get_player(target.lover_sid)
+                if lover:
+                    self._check_special_powers(target)
+                    self.kill_player(lover.sid)
+                    killed_players.append(lover.sid)
+
         return killed_players
 
-    def check_game_over(self) -> bool:
-        """Check if the game is over after deaths are processed"""
-        if self.game.werewolves_alive == 0:
-            self.game.winners = "Villagers"
-            return True
-        if self.game.werewolves_alive >= self.game.villagers_alive:
-            self.game.winners = "Werewolves"
-            return True
-        return False
+    def _update_team_counts(self, player: Player):
+        """Update team counts when a player dies"""
+        if player.role == PlayerRole.WEREWOLF:
+            self.game.werewolves_alive -= 1
+        else:
+            self.game.villagers_alive -= 1
+
+    def add_pending_death(self, player: Player):
+        """Add a player to pending deaths list"""
+        if player.sid not in self.pending_deaths:
+            self.pending_deaths.append(player.sid)
+
+    def remove_pending_death(self, player: Player):
+        """Remove a player from pending deaths list"""
+        if player.sid in self.pending_deaths:
+            self.pending_deaths.remove(player.sid)
+
+    def _check_special_powers(self, player: Player):
+        """
+        Handle any special powers when a player dies
+        """
+        if player.role == PlayerRole.HUNTER:
+            print(f"Checking if {player.name} is hunter")
+            pass

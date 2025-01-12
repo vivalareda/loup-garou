@@ -12,6 +12,7 @@ class Game:
         self.pending_deaths: List[str] = []
         self.witch_heal_available = True
         self.witch_kill_available = True
+        self.hunter_is_alive = True
         self.lovers: List[Player] = []
         self.veto_player = None
         self.player_votes_count: Dict[str, int] = {}
@@ -149,15 +150,17 @@ class Game:
 
         if self.werewolves_alive == 0:
             self.winners = "Villagers"
+            print("Villagers won")
             return True
         if self.werewolves_alive >= village_count:
             self.winners = "Werewolves"
+            print("Werewolves won")
             return True
         return False
 
-    def temporary_function(self):
-        if self.reda_sid is None or self.carl_sid is None:
-            return
-        player1 = self.get_player(self.reda_sid)
-        player2 = self.get_player(self.carl_sid)
-        self.set_lovers(player1, player2)
+    # def temporary_function(self):
+    #     if self.reda_sid is None or self.carl_sid is None:
+    #         return
+    #     player1 = self.get_player(self.reda_sid)
+    #     player2 = self.get_player(self.carl_sid)
+    #     self.set_lovers(player1, player2)

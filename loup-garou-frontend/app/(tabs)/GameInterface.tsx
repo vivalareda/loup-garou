@@ -102,6 +102,10 @@ const GameInterface: React.FC = () => {
       setShowWitchKillModal(true);
     };
 
+    const handleHunterSelection = () => {
+      setShowHunter(true);
+    };
+
     const cleanup = () => {
       socket.off("cupidon_choice", handleCupidonChoice);
       socket.off("alert_lovers", handleIsInLove);
@@ -115,11 +119,13 @@ const GameInterface: React.FC = () => {
 
     socket.once("cupidon_choice", handleCupidonChoice);
     socket.once("alert_lovers", handleIsInLove);
+    socket.once("hunter_selection", handleHunterSelection);
     socket.on("witch_heal", handleWitchHeel);
     socket.on("alert_dead", handleDeath);
     socket.on("witch_kill", handleWitchKill);
     socket.on("werewolf_wake_up", handleWerewolfWakeUp);
     socket.on("day_vote", handleDayVote);
+
     //socket.on("seer_choice", handleSeerChoice);
 
     return () => {
