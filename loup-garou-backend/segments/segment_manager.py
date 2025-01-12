@@ -210,31 +210,6 @@ class SegmentManager:
         print("Starting day vote")
         self.socketio.emit("day_vote")
 
-    def count_vote_after_hunter(self):
-        top_player = self.game.get_top_voted_players()
-        player = self.game.get_player(top_player[0])
-        self.game.kill_player(top_player[0])
-        self.alert_dead_player(top_player[0])
-        self.running_hunter_segment = False
-
-        print("top rated player is ", player)
-        if player and player.lover_sid:
-            self.play_audio("Day-vote/Lover")
-            lover = self.game.get_player(player.lover_sid)
-            self.game.kill_player(lover.sid)
-            self.alert_dead_player(lover.sid)
-            self.game.lovers_are_opposited_teams_and_alive = False
-
-        is_game_over = self.game.check_game_over()
-        if is_game_over:
-            case = self.game.winners
-            if case == "Villagers":
-                self.play_audio("End-game/Villagers-won")
-            elif case == "Werewolves":
-                self.play_audio("End-game/Werewolves-won")
-        else:
-            self.start_night()
-
     def count_votes(self):
         top_player = self.game.get_top_voted_players()
         player = self.game.get_player(top_player[0])
@@ -247,12 +222,11 @@ class SegmentManager:
                     and self.game.lovers_are_opposited_teams_and_alive
                     and player.role == PlayerRole.HUNTER
                 ):
-                    self.handle_hunter_kill(player)
+                    self.is_player_hunter(player)
                     return
 
         self.game.kill_player(top_player[0])
         self.alert_dead_player(top_player[0])
-        self.running_hunter_segment = False
 
         if player and player.lover_sid:
             self.play_audio("Day-vote/Lover")
@@ -262,15 +236,13 @@ class SegmentManager:
             self.game.lovers_are_opposited_teams_and_alive = False
             # self.is_player_hunter(lover)
 
-    def handle_hunter_kill(self, player):
+    def is_player_hunter(self, player):
         print(f"Checking if {player.name} is hunter")
         self.running_hunter_segment = True
         if player.role == PlayerRole.HUNTER:
             self.play_audio("Hunter/Hunter")
             self.socketio.emit(
-                "hunter_selection",
-                {"message": "Choose a player to kill"},
-                to=player.sid,
+                "hunter_choice", {"message": "Choose a player to kill"}, to=player.sid
             )
 
     def check_game_over(self):
@@ -281,9 +253,9 @@ class SegmentManager:
         else:
             case = self.game.winners
             if case == "Villagers":
-                self.play_audio("End-game/Villagers-won")
+                self.play_audio("Villagers-won")
             elif case == "Werewolves":
-                self.play_audio("End-game/Werewolves-won")
+                self.play_audio("Werewolves-won")
 
     def _run_lovers_segment(self):
         self.play_start_audio(SegmentType.LOVERS)
